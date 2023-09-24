@@ -1,2 +1,48 @@
-This is version one.
-I want this to commit.
+import com.bank.api.controllers.AccountController;
+import com.bank.api.dto.TransferRequest;
+import com.bank.api.entity.Account;
+import com.bank.api.helper.AccountLogics;
+import com.bank.api.services.AccountService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.ResponseEntity;
+
+import java.security.Principal;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+public class AccountControllerTest {
+
+    @InjectMocks
+    private AccountController accountController;
+
+    @Mock
+    private AccountLogics accountLogics;
+
+    @Mock
+    private AccountService accountService;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testTransferMoney() {
+        TransferRequest transferRequest = new TransferRequest();
+        Principal principal = mock(Principal.class);
+        
+        // Mock the behavior of accountLogics.transferMoney
+        when(accountLogics.transferMoney(transferRequest, principal)).thenReturn(ResponseEntity.ok("Transfer successful"));
+
+        ResponseEntity<Object> response = accountController.transferMoney(transferRequest, principal);
+
+        assertEquals(ResponseEntity.ok("Transfer successful"), response);
+    }
+
+    // Write similar test cases for other controller methods...
+}
