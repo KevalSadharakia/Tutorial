@@ -402,3 +402,536 @@ public class PersonalDetailsControllerTest {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.auth.JwtAuthenticationEntryPoint;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+
+import java.io.PrintWriter;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+public class JwtAuthenticationEntryPointTest {
+
+    @InjectMocks
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testCommence() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AuthenticationException authException = new AuthenticationException("Access Denied") {};
+
+        jwtAuthenticationEntryPoint.commence(request, response, authException);
+
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, response.getStatus());
+        assertEquals("Access Denied entry !! Access Denied", response.getContentAsString());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.auth.JwtHelper;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Date;
+import java.util.function.Function;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public class JwtHelperTest {
+
+    @InjectMocks
+    private JwtHelper jwtHelper;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testGetUsernameFromToken() {
+        String token = createTokenWithSubject("testUser");
+        String username = jwtHelper.getUsernameFromToken(token);
+        assertEquals("testUser", username);
+    }
+
+    @Test
+    public void testGetExpirationDateFromToken() {
+        String token = createTokenWithSubject("testUser");
+        Date expirationDate = jwtHelper.getExpirationDateFromToken(token);
+        assertNotNull(expirationDate);
+    }
+
+    @Test
+    public void testGetClaimFromToken() {
+        String token = createTokenWithSubject("testUser");
+        String claimValue = jwtHelper.getClaimFromToken(token, Claims::getSubject);
+        assertEquals("testUser", claimValue);
+    }
+
+    @Test
+    public void testIsTokenExpired_ValidToken() {
+        String token = createTokenWithSubject("testUser");
+        assertFalse(jwtHelper.isTokenExpired(token));
+    }
+
+    @Test
+    public void testIsTokenExpired_ExpiredToken() {
+        String expiredToken = createExpiredTokenWithSubject("testUser");
+        assertTrue(jwtHelper.isTokenExpired(expiredToken));
+    }
+
+    @Test
+    public void testGenerateToken() {
+        String username = "testUser";
+        String token = jwtHelper.generateToken(username);
+        assertNotNull(token);
+    }
+
+    @Test
+    public void testValidateToken_ValidToken() {
+        String token = createTokenWithSubject("testUser");
+        assertTrue(jwtHelper.validateToken(token, "testUser"));
+    }
+
+    @Test
+    public void testValidateToken_InvalidToken() {
+        String token = createTokenWithSubject("testUser");
+        assertFalse(jwtHelper.validateToken(token, "invalidUser"));
+    }
+
+    private String createTokenWithSubject(String subject) {
+        return Jwts.builder()
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + JwtHelper.JWT_TOKEN_VALIDITY * 1000))
+                .signWith(SignatureAlgorithm.HS512, "testSecret")
+                .compact();
+    }
+
+    private String createExpiredTokenWithSubject(String subject) {
+        return Jwts.builder()
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() - 1000)) // Expired token
+                .signWith(SignatureAlgorithm.HS512, "testSecret")
+                .compact();
+    }
+}
+
+
+
+import com.bank.api.auth.JwtAuthenticationEntryPoint;
+import com.bank.api.auth.JwtAuthenticationFilter;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import static org.mockito.Mockito.*;
+
+public class SecurityConfigTest {
+
+    @InjectMocks
+    private SecurityConfig securityConfig;
+
+    @Mock
+    private JwtAuthenticationEntryPoint authenticationEntryPoint;
+
+    @Mock
+    private JwtAuthenticationFilter authenticationFilter;
+
+    @Mock
+    private CorsConfigurationSource corsConfigurationSource;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testSecurityFilterChain() throws Exception {
+        HttpSecurity httpSecurity = mock(HttpSecurity.class);
+
+        SecurityFilterChain filterChain = securityConfig.securityFilterChain(httpSecurity);
+
+        verify(httpSecurity, times(1)).csrf(any());
+        verify(httpSecurity, times(1)).authorizeRequests();
+        verify(httpSecurity, times(1)).exceptionHandling(any());
+        verify(httpSecurity, times(1)).sessionManagement(any());
+        verify(httpSecurity, times(1)).cors(corsConfigurationSource);
+
+        // Verify that the JwtAuthenticationFilter is added before UsernamePasswordAuthenticationFilter
+        verify(httpSecurity, times(1)).addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // Additional assertions or configuration verifications can be added here as needed
+    }
+}
+
+
+
+
+
+
+
+
+
+SERVICE
+
+
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.entity.Account;
+import com.bank.api.repositories.AccountRepository;
+import com.bank.api.services.AccountService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class AccountServiceTest {
+
+    @InjectMocks
+    private AccountService accountService;
+
+    @Mock
+    private AccountRepository accountRepository;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testUpdateAccount() {
+        Account account = new Account();
+        account.setAccountNumber(123);
+
+        when(accountRepository.save(account)).thenReturn(account);
+
+        assertDoesNotThrow(() -> accountService.updateAccount(account));
+    }
+
+    @Test
+    public void testUpdateAccount_NullAccount() {
+        assertThrows(RuntimeException.class, () -> accountService.updateAccount(null));
+    }
+
+    @Test
+    public void testGetAccount() {
+        int accountNumber = 123;
+        Account account = new Account();
+        account.setAccountNumber(accountNumber);
+
+        when(accountRepository.findById(accountNumber)).thenReturn(Optional.of(account));
+
+        Account retrievedAccount = accountService.getAccount(accountNumber);
+
+        assertNotNull(retrievedAccount);
+        assertEquals(accountNumber, retrievedAccount.getAccountNumber());
+    }
+
+    @Test
+    public void testGetAccount_NotFound() {
+        int accountNumber = 123;
+
+        when(accountRepository.findById(accountNumber)).thenReturn(Optional.empty());
+
+        Account retrievedAccount = accountService.getAccount(accountNumber);
+
+        assertNull(retrievedAccount);
+    }
+}
+
+
+
+
+
+
+
+
+import com.bank.api.entity.Beneficiary;
+import com.bank.api.repositories.BeneficiaryRepository;
+import com.bank.api.services.BeneficiaryService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class BeneficiaryServiceTest {
+
+    @InjectMocks
+    private BeneficiaryService beneficiaryService;
+
+    @Mock
+    private BeneficiaryRepository beneficiaryRepository;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testAddBeneficiary() {
+        Beneficiary beneficiary = new Beneficiary();
+
+        when(beneficiaryRepository.save(beneficiary)).thenReturn(beneficiary);
+
+        Object result = beneficiaryService.add(beneficiary);
+
+        assertNotNull(result);
+        assertEquals(beneficiary, result);
+    }
+
+    @Test
+    public void testGetBeneficiaryList() {
+        String email = "test@example.com";
+        Beneficiary beneficiary1 = new Beneficiary();
+        Beneficiary beneficiary2 = new Beneficiary();
+
+        when(beneficiaryRepository.findAllByAddedByEmail(email)).thenReturn(Arrays.asList(beneficiary1, beneficiary2));
+
+        List<Beneficiary> beneficiaries = beneficiaryService.getBeneficiaryList(email);
+
+        assertNotNull(beneficiaries);
+        assertEquals(2, beneficiaries.size());
+        assertTrue(beneficiaries.contains(beneficiary1));
+        assertTrue(beneficiaries.contains(beneficiary2));
+    }
+
+    @Test
+    public void testGetBeneficiaryList_Empty() {
+        String email = "test@example.com";
+
+        when(beneficiaryRepository.findAllByAddedByEmail(email)).thenReturn(Arrays.asList());
+
+        List<Beneficiary> beneficiaries = beneficiaryService.getBeneficiaryList(email);
+
+        assertNotNull(beneficiaries);
+        assertEquals(0, beneficiaries.size());
+    }
+}
+
+
+
+
+
+
+
+import com.bank.api.dto.JWTRequest;
+import com.bank.api.entity.PersonalDetails;
+import com.bank.api.repositories.PersonalDetailsRepository;
+import com.bank.api.services.PersonalDetailsService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class PersonalDetailsServiceTest {
+
+    @InjectMocks
+    private PersonalDetailsService personalDetailsService;
+
+    @Mock
+    private PersonalDetailsRepository personalDetailsRepository;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testSave() {
+        PersonalDetails personalDetails = new PersonalDetails();
+
+        when(personalDetailsRepository.save(personalDetails)).thenReturn(personalDetails);
+
+        Object result = personalDetailsService.save(personalDetails);
+
+        assertNotNull(result);
+        assertEquals(personalDetails, result);
+    }
+
+    @Test
+    public void testIsExist() {
+        String email = "test@example.com";
+
+        when(personalDetailsRepository.existsById(email)).thenReturn(true);
+
+        boolean exists = personalDetailsService.isExist(email);
+
+        assertTrue(exists);
+    }
+
+    @Test
+    public void testGetDetailsByEmail() {
+        String email = "test@example.com";
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setEmail(email);
+
+        when(personalDetailsRepository.findById(email)).thenReturn(Optional.of(personalDetails));
+
+        PersonalDetails retrievedDetails = personalDetailsService.getDetailsByEmail(email);
+
+        assertNotNull(retrievedDetails);
+        assertEquals(email, retrievedDetails.getEmail());
+    }
+
+    @Test
+    public void testGetDetailsByEmail_NotFound() {
+        String email = "test@example.com";
+
+        when(personalDetailsRepository.findById(email)).thenReturn(Optional.empty());
+
+        PersonalDetails retrievedDetails = personalDetailsService.getDetailsByEmail(email);
+
+        assertNull(retrievedDetails);
+    }
+
+    // Add similar tests for other methods as needed
+
+    // ...
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.entity.Transaction;
+import com.bank.api.repositories.TransactionRepository;
+import com.bank.api.services.TransactionService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import static org.mockito.Mockito.*;
+
+public class TransactionServiceTest {
+
+    @InjectMocks
+    private TransactionService transactionService;
+
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testUpdateTransaction() {
+        Transaction transaction = new Transaction();
+
+        // Mock the behavior of the transactionRepository.save method
+        when(transactionRepository.save(transaction)).thenReturn(transaction);
+
+        // Call the updateTransaction method
+        transactionService.updateTransaction(transaction);
+
+        // Verify that transactionRepository.save was called with the transaction object
+        verify(transactionRepository, times(1)).save(transaction);
+    }
+}
