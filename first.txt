@@ -84,5 +84,31 @@ public class AccountControllerTest {
         assertEquals(ResponseEntity.ok(account), response);
     }
 
+    @Test
+    public void testGetAccount() {
+        int accountId = 1;
+        Principal principal = mock(Principal.class);
+
+        // Mock the behavior of accountLogics.getAccount
+        when(accountLogics.getAccount(accountId, principal)).thenReturn(ResponseEntity.ok("Account details"));
+
+        ResponseEntity<Object> response = accountController.getAccount(accountId, principal);
+
+        assertEquals(ResponseEntity.ok("Account details"), response);
+    }
+
+    @Test
+    public void testGetAccountTransactions() {
+        int accountId = 1;
+        Principal principal = mock(Principal.class);
+
+        // Mock the behavior of accountLogics.getAccountTransaction
+        when(accountLogics.getAccountTransaction(accountId, principal)).thenReturn(ResponseEntity.ok("Account transactions"));
+
+        ResponseEntity<Object> response = accountController.getAccountTransactions(accountId, principal);
+
+        assertEquals(ResponseEntity.ok("Account transactions"), response);
+    }
+
     // Write similar test cases for other controller methods...
 }
