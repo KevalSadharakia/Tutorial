@@ -112,3 +112,293 @@ public class AccountControllerTest {
 
     // Write similar test cases for other controller methods...
 }
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.controllers.AuthenticationController;
+import com.bank.api.dto.JWTRequest;
+import com.bank.api.dto.JWTResponse;
+import com.bank.api.services.PersonalDetailsService;
+import com.bank.api.auth.JwtHelper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+public class AuthenticationControllerTest {
+
+    @InjectMocks
+    private AuthenticationController authenticationController;
+
+    @Mock
+    private JwtHelper jwtHelper;
+
+    @Mock
+    private PersonalDetailsService personalDetailsService;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testLogin_ValidCredentials() {
+        JWTRequest jwtRequest = new JWTRequest("username", "password");
+
+        // Mock the behavior of personalDetailsService.isLoginCredentialValid
+        when(personalDetailsService.isLoginCredentialValid(jwtRequest)).thenReturn(true);
+
+        // Mock the behavior of jwtHelper.generateToken
+        when(jwtHelper.generateToken(jwtRequest.getUsername())).thenReturn("mockedToken");
+
+        ResponseEntity<Object> response = authenticationController.login(jwtRequest);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(JWTResponse.class, response.getBody().getClass());
+
+        JWTResponse jwtResponse = (JWTResponse) response.getBody();
+        assertEquals("username", jwtResponse.getUsername());
+        assertEquals("mockedToken", jwtResponse.getToken());
+    }
+
+    @Test
+    public void testLogin_InvalidCredentials() {
+        JWTRequest jwtRequest = new JWTRequest("invalidUser", "invalidPassword");
+
+        // Mock the behavior of personalDetailsService.isLoginCredentialValid
+        when(personalDetailsService.isLoginCredentialValid(jwtRequest)).thenReturn(false);
+
+        ResponseEntity<Object> response = authenticationController.login(jwtRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Invalid User", response.getBody());
+    }
+
+    @Test
+    public void testIsValid() {
+        ResponseEntity<Boolean> response = authenticationController.isValid(mock(Principal.class));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody());
+    }
+}
+
+
+import com.bank.api.controllers.BeneficiaryController;
+import com.bank.api.dto.BeneficiaryRequest;
+import com.bank.api.logics.BeneficiaryLogics;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.security.Principal;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+public class BeneficiaryControllerTest {
+
+    @InjectMocks
+    private BeneficiaryController beneficiaryController;
+
+    @Mock
+    private BeneficiaryLogics beneficiaryLogics;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testAddBeneficiary() {
+        BeneficiaryRequest beneficiaryRequest = new BeneficiaryRequest();
+        Principal principal = mock(Principal.class);
+
+        // Mock the behavior of beneficiaryLogics.addBeneficiary
+        when(beneficiaryLogics.addBeneficiary(beneficiaryRequest, principal))
+                .thenReturn(ResponseEntity.ok("Beneficiary added successfully"));
+
+        ResponseEntity<Object> response = beneficiaryController.responseEntity(beneficiaryRequest, principal);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Beneficiary added successfully", response.getBody());
+    }
+
+    @Test
+    public void testGetBeneficiaries() {
+        Principal principal = mock(Principal.class);
+
+        // Mock the behavior of beneficiaryLogics.getBeneficiaries
+        when(beneficiaryLogics.getBeneficiaries(principal))
+                .thenReturn(ResponseEntity.ok(List.of("Beneficiary1", "Beneficiary2")));
+
+        ResponseEntity<Object> response = beneficiaryController.responseEntity1(principal);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(List.of("Beneficiary1", "Beneficiary2"), response.getBody());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.controllers.PersonalDetailsController;
+import com.bank.api.dto.EnableNetBankingModel;
+import com.bank.api.dto.PersonalDetailsRequest;
+import com.bank.api.entity.PersonalDetails;
+import com.bank.api.services.PersonalDetailsService;
+import com.bank.api.helper.ModelConverter;
+import com.bank.api.helper.ValueExtrecterFromPrinciple;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.security.Principal;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+public class PersonalDetailsControllerTest {
+
+    @InjectMocks
+    private PersonalDetailsController personalDetailsController;
+
+    @Mock
+    private PersonalDetailsService personalDetailsService;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testCreateAccount_ValidRequest() {
+        PersonalDetailsRequest personalDetailsRequest = new PersonalDetailsRequest();
+        personalDetailsRequest.setEmail("test@example.com");
+
+        // Mock the behavior of personalDetailsService.isExist to return false
+        when(personalDetailsService.isExist(personalDetailsRequest.getEmail())).thenReturn(false);
+
+        // Mock the behavior of personalDetailsService.save
+        PersonalDetails savedPersonalDetails = new PersonalDetails();
+        when(personalDetailsService.save(any(PersonalDetails.class))).thenReturn(savedPersonalDetails);
+
+        ResponseEntity<Object> response = personalDetailsController.createAccount(personalDetailsRequest);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(savedPersonalDetails, response.getBody());
+    }
+
+    @Test
+    public void testCreateAccount_DuplicateEmail() {
+        PersonalDetailsRequest personalDetailsRequest = new PersonalDetailsRequest();
+        personalDetailsRequest.setEmail("duplicate@example.com");
+
+        // Mock the behavior of personalDetailsService.isExist to return true (duplicate email)
+        when(personalDetailsService.isExist(personalDetailsRequest.getEmail())).thenReturn(true);
+
+        ResponseEntity<Object> response = personalDetailsController.createAccount(personalDetailsRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Email address is used", response.getBody());
+    }
+
+    // Add more test cases for createAccount to cover other scenarios...
+
+    @Test
+    public void testEnableNetBanking_ValidRequest() {
+        EnableNetBankingModel enableNetBankingModel = new EnableNetBankingModel();
+        enableNetBankingModel.setAccountNumber(123);
+        enableNetBankingModel.setPhoneNumber("1234567890");
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setContactNumber("1234567890");
+
+        // Mock the behavior of personalDetailsService.getDetailsByAccountNumber
+        when(personalDetailsService.getDetailsByAccountNumber(enableNetBankingModel.getAccountNumber())).thenReturn(personalDetails);
+
+        // Mock the behavior of personalDetailsService.isNetBankingAlreadyEnabled to return false
+        when(personalDetailsService.isNetBankingAlreadyEnabled(enableNetBankingModel.getAccountNumber())).thenReturn(false);
+
+        // Mock the behavior of personalDetailsService.save
+        PersonalDetails updatedPersonalDetails = new PersonalDetails();
+        when(personalDetailsService.save(any(PersonalDetails.class))).thenReturn(updatedPersonalDetails);
+
+        ResponseEntity<Object> response = personalDetailsController.enableNetBanking(enableNetBankingModel);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(updatedPersonalDetails, response.getBody());
+    }
+
+    // Add more test cases for enableNetBanking to cover other scenarios...
+
+    // Add tests for the other methods in PersonalDetailsController...
+@Test
+    public void testGetDetails_ValidPrincipal() {
+        Principal principal = mock(Principal.class);
+        when(ValueExtrecterFromPrinciple.getDetailsFromPrinciple(principal)).thenReturn(new PersonalDetails());
+        when(personalDetailsService.getDetailsByEmail(anyString())).thenReturn(new PersonalDetails());
+
+        ResponseEntity<Object> response = personalDetailsController.getDetails(principal);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(PersonalDetails.class, response.getBody().getClass());
+    }
+
+    @Test
+    public void testGetDetails_InvalidPrincipal() {
+        Principal principal = mock(Principal.class);
+        when(ValueExtrecterFromPrinciple.getDetailsFromPrinciple(principal)).thenReturn(null);
+
+        ResponseEntity<Object> response = personalDetailsController.getDetails(principal);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Account Not Found", response.getBody());
+    }
+
+    @Test
+    public void testGetAccount() {
+        int accountId = 123;
+        when(personalDetailsService.getDetailsByAccountNumber(accountId)).thenReturn(new PersonalDetails());
+
+        ResponseEntity<Object> response = personalDetailsController.getAccount(accountId, mock(Principal.class));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(PersonalDetails.class, response.getBody().getClass());
+    }
+}
+
