@@ -1508,5 +1508,229 @@ public class BeneficiaryLogicsTest {
         assertTrue(response.getBody() instanceof List);
         assertEquals(beneficiaries.size(), ((List<?>) response.getBody()).size());
     }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.controllers.PersonalDetailsController;
+import com.bank.api.dto.*;
+import com.bank.api.entity.PersonalDetails;
+import com.bank.api.services.PersonalDetailsService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.security.Principal;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class PersonalDetailsControllerTest {
+
+    @InjectMocks
+    private PersonalDetailsController personalDetailsController;
+
+    @Mock
+    private PersonalDetailsService personalDetailsService;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testCreateAccountSuccess() {
+        PersonalDetailsRequest request = new PersonalDetailsRequest();
+        // Initialize request with required data
+
+        when(personalDetailsService.isExist(request.getEmail())).thenReturn(false);
+        when(personalDetailsService.getAccountCount()).thenReturn(1L);
+
+        ResponseEntity<Object> response = personalDetailsController.createAccount(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertTrue(response.getBody() instanceof AccountCreatedResponse);
+    }
+
+    @Test
+    public void testCreateAccountEmailInUse() {
+        PersonalDetailsRequest request = new PersonalDetailsRequest();
+        // Initialize request with required data
+
+        when(personalDetailsService.isExist(request.getEmail())).thenReturn(true);
+
+        ResponseEntity<Object> response = personalDetailsController.createAccount(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Email address is used.", response.getBody());
+    }
+
+    @Test
+    public void testEnableNetBankingSuccess() {
+        EnableNetBankingModel request = new EnableNetBankingModel();
+        // Initialize request with required data
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Initialize personalDetails with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(personalDetails);
+        when(personalDetailsService.getAccountCount()).thenReturn(2L);
+        when(personalDetailsService.isNetBankingAlreadyEnabled(request.getAccountNumber())).thenReturn(false);
+
+        ResponseEntity<Object> response = personalDetailsController.enableNetBanking(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Netbanking enabled.", response.getBody());
+    }
+
+    @Test
+    public void testEnableNetBankingPendingRequest() {
+        EnableNetBankingModel request = new EnableNetBankingModel();
+        // Initialize request with required data
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Initialize personalDetails with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(personalDetails);
+        when(personalDetailsService.getAccountCount()).thenReturn(2L);
+        when(personalDetails.getAccepted()).thenReturn(null);
+
+        ResponseEntity<Object> response = personalDetailsController.enableNetBanking(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Your account opening request is pending.", response.getBody());
+    }
+
+    @Test
+    public void testGetUsernameSuccess() {
+        ForgotUsernameRequest request = new ForgotUsernameRequest();
+        // Initialize request with required data
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Initialize personalDetails with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(personalDetails);
+        when(personalDetails.getIdentityProofNumber()).thenReturn(request.getAadharNumber());
+
+        ResponseEntity<Object> response = personalDetailsController.getUsername(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().toString().startsWith("Your username is"));
+    }
+
+    @Test
+    public void testGetUsernameNoAccountFound() {
+        ForgotUsernameRequest request = new ForgotUsernameRequest();
+        // Initialize request with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(null);
+
+        ResponseEntity<Object> response = personalDetailsController.getUsername(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("No account found!", response.getBody());
+    }
+
+    @Test
+    public void testGetUsernameInvalidAadharNumber() {
+        ForgotUsernameRequest request = new ForgotUsernameRequest();
+        // Initialize request with required data
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Initialize personalDetails with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(personalDetails);
+        when(personalDetails.getIdentityProofNumber()).thenReturn("InvalidAadharNumber");
+
+        ResponseEntity<Object> response = personalDetailsController.getUsername(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Wrong aadhar number", response.getBody());
+    }
+
+    @Test
+    public void testForgotPasswordSuccess() {
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        // Initialize request with required data
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Initialize personalDetails with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(personalDetails);
+        when(personalDetails.getIdentityProofNumber()).thenReturn(request.getAadharNumber());
+        when(personalDetails.getUsername()).thenReturn(request.getUserId());
+
+        ResponseEntity<Object> response = personalDetailsController.forgotPassword(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Password is updated.", response.getBody());
+    }
+
+    @Test
+    public void testForgotPasswordNoAccountFound() {
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        // Initialize request with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(null);
+
+        ResponseEntity<Object> response = personalDetailsController.forgotPassword(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("No account found!", response.getBody());
+    }
+
+    @Test
+    public void testForgotPasswordInvalidAadharNumber() {
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        // Initialize request with required data
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Initialize personalDetails with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(personalDetails);
+        when(personalDetails.getIdentityProofNumber()).thenReturn("InvalidAadharNumber");
+
+        ResponseEntity<Object> response = personalDetailsController.forgotPassword(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Wrong aadhar number", response.getBody());
+    }
+
+    @Test
+    public void testForgotPasswordInvalidUserId() {
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        // Initialize request with required data
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Initialize personalDetails with required data
+
+        when(personalDetailsService.getDetailsByAccountNumber(request.getAccountNumber())).thenReturn(personalDetails);
+        when(personalDetails.getIdentityProofNumber()).thenReturn(request.getAadharNumber());
+        when(personalDetails.getUsername()).thenReturn("InvalidUserId");
+
+        ResponseEntity<Object> response = personalDetailsController.forgotPassword(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Wrong User ID", response.getBody());
+    }
+
+    // Write more test cases for other scenarios and methods
+}
+
 
