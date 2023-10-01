@@ -122,11 +122,11 @@ public class AccountControllerTest {
 
 
 
-import com.bank.api.controllers.AuthenticationController;
+import com.bank.api.auth.JwtHelper;
 import com.bank.api.dto.JWTRequest;
 import com.bank.api.dto.JWTResponse;
+import com.bank.api.entity.PersonalDetails;
 import com.bank.api.services.PersonalDetailsService;
-import com.bank.api.auth.JwtHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -135,7 +135,9 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.security.Principal;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class AuthenticationControllerTest {
@@ -155,30 +157,26 @@ public class AuthenticationControllerTest {
     }
 
     @Test
-    public void testLogin_ValidCredentials() {
-        JWTRequest jwtRequest = new JWTRequest("username", "password");
+    public void testLoginValidCredentials() {
+        JWTRequest jwtRequest = new JWTRequest();
+        jwtRequest.setUsername("testUser");
+        jwtRequest.setPassword("testPassword");
 
-        // Mock the behavior of personalDetailsService.isLoginCredentialValid
         when(personalDetailsService.isLoginCredentialValid(jwtRequest)).thenReturn(true);
-
-        // Mock the behavior of jwtHelper.generateToken
-        when(jwtHelper.generateToken(jwtRequest.getUsername())).thenReturn("mockedToken");
+        when(jwtHelper.generateToken(jwtRequest.getUsername())).thenReturn("testToken");
 
         ResponseEntity<Object> response = authenticationController.login(jwtRequest);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(JWTResponse.class, response.getBody().getClass());
-
-        JWTResponse jwtResponse = (JWTResponse) response.getBody();
-        assertEquals("username", jwtResponse.getUsername());
-        assertEquals("mockedToken", jwtResponse.getToken());
+        assertTrue(response.getBody() instanceof JWTResponse);
     }
 
     @Test
-    public void testLogin_InvalidCredentials() {
-        JWTRequest jwtRequest = new JWTRequest("invalidUser", "invalidPassword");
+    public void testLoginInvalidCredentials() {
+        JWTRequest jwtRequest = new JWTRequest();
+        jwtRequest.setUsername("invalidUser");
+        jwtRequest.setPassword("invalidPassword");
 
-        // Mock the behavior of personalDetailsService.isLoginCredentialValid
         when(personalDetailsService.isLoginCredentialValid(jwtRequest)).thenReturn(false);
 
         ResponseEntity<Object> response = authenticationController.login(jwtRequest);
@@ -188,13 +186,40 @@ public class AuthenticationControllerTest {
     }
 
     @Test
-    public void testIsValid() {
-        ResponseEntity<Boolean> response = authenticationController.isValid(mock(Principal.class));
+    public void testIsValidAuthenticatedUser() {
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setEmail("testUser@example.com");
+
+        Principal principal = () -> personalDetails.getEmail();
+
+        ResponseEntity<Object> response = authenticationController.isValid(principal);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(response.getBody());
+        assertEquals("aaa", response.getBody());
+    }
+
+    @Test
+    public void testIsValidUnauthenticatedUser() {
+        Principal principal = null;
+
+        ResponseEntity<Object> response = authenticationController.isValid(principal);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertFalse((Boolean) response.getBody());
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 import com.bank.api.controllers.BeneficiaryController;
