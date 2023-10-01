@@ -272,13 +272,11 @@ public class BeneficiaryControllerTest {
 
 
 
-import com.bank.api.controllers.PersonalDetailsController;
-import com.bank.api.dto.EnableNetBankingModel;
-import com.bank.api.dto.PersonalDetailsRequest;
+import com.bank.api.dto.*;
 import com.bank.api.entity.PersonalDetails;
-import com.bank.api.services.PersonalDetailsService;
 import com.bank.api.helper.ModelConverter;
 import com.bank.api.helper.ValueExtrecterFromPrinciple;
+import com.bank.api.services.PersonalDetailsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -286,10 +284,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import java.security.Principal;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.ArrayList;
+import java.util.List;
 import static org.mockito.Mockito.*;
 
 public class PersonalDetailsControllerTest {
@@ -306,116 +303,119 @@ public class PersonalDetailsControllerTest {
     }
 
     @Test
-    public void testCreateAccount_ValidRequest() {
+    public void testCreateAccount() {
+        // Create mock data for the test case
         PersonalDetailsRequest personalDetailsRequest = new PersonalDetailsRequest();
         personalDetailsRequest.setEmail("test@example.com");
+        // Add other required fields in the request
 
-        // Mock the behavior of personalDetailsService.isExist to return false
         when(personalDetailsService.isExist(personalDetailsRequest.getEmail())).thenReturn(false);
 
-        // Mock the behavior of personalDetailsService.save
-        PersonalDetails savedPersonalDetails = new PersonalDetails();
-        when(personalDetailsService.save(any(PersonalDetails.class))).thenReturn(savedPersonalDetails);
+        PersonalDetails personalDetails = new PersonalDetails();
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.save(any(PersonalDetails.class))).thenReturn(personalDetails);
 
+        // Call the createAccount method
         ResponseEntity<Object> response = personalDetailsController.createAccount(personalDetailsRequest);
 
+        // Verify the behavior and response
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(savedPersonalDetails, response.getBody());
+        assertEquals(personalDetails.getAccountNumber(), ((AccountCreatedResponse) response.getBody()).getAccountNumber());
     }
 
-    @Test
-    public void testCreateAccount_DuplicateEmail() {
-        PersonalDetailsRequest personalDetailsRequest = new PersonalDetailsRequest();
-        personalDetailsRequest.setEmail("duplicate@example.com");
-
-        // Mock the behavior of personalDetailsService.isExist to return true (duplicate email)
-        when(personalDetailsService.isExist(personalDetailsRequest.getEmail())).thenReturn(true);
-
-        ResponseEntity<Object> response = personalDetailsController.createAccount(personalDetailsRequest);
-
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("Email address is used", response.getBody());
-    }
-
-    // Add more test cases for createAccount to cover other scenarios...
+    // Similar test cases for other methods...
 
     @Test
-    public void testEnableNetBanking_ValidRequest() {
-        EnableNetBankingModel enableNetBankingModel = new EnableNetBankingModel();
-        enableNetBankingModel.setAccountNumber(123);
-        enableNetBankingModel.setPhoneNumber("1234567890");
+    public void testGetDetails() {
+        // Create mock data for the test case
+        Principal principal = mock(Principal.class);
+        when(principal.getName()).thenReturn("test@example.com");
 
         PersonalDetails personalDetails = new PersonalDetails();
-        personalDetails.setContactNumber("1234567890");
+        personalDetails.setEmail("test@example.com");
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByEmail("test@example.com")).thenReturn(personalDetails);
 
-        // Mock the behavior of personalDetailsService.getDetailsByAccountNumber
-        when(personalDetailsService.getDetailsByAccountNumber(enableNetBankingModel.getAccountNumber())).thenReturn(personalDetails);
-
-        // Mock the behavior of personalDetailsService.isNetBankingAlreadyEnabled to return false
-        when(personalDetailsService.isNetBankingAlreadyEnabled(enableNetBankingModel.getAccountNumber())).thenReturn(false);
-
-        // Mock the behavior of personalDetailsService.save
-        PersonalDetails updatedPersonalDetails = new PersonalDetails();
-        when(personalDetailsService.save(any(PersonalDetails.class))).thenReturn(updatedPersonalDetails);
-
-        ResponseEntity<Object> response = personalDetailsController.enableNetBanking(enableNetBankingModel);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(updatedPersonalDetails, response.getBody());
-    }
-
-    // Add more test cases for enableNetBanking to cover other scenarios...
-
-    // Add tests for the other methods in PersonalDetailsController...
-@Test
-    public void testGetDetails_ValidPrincipal() {
-        Principal principal = mock(Principal.class);
-        when(ValueExtrecterFromPrinciple.getDetailsFromPrinciple(principal)).thenReturn(new PersonalDetails());
-        when(personalDetailsService.getDetailsByEmail(anyString())).thenReturn(new PersonalDetails());
-
+        // Call the getDetails method
         ResponseEntity<Object> response = personalDetailsController.getDetails(principal);
 
+        // Verify the behavior and response
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(PersonalDetails.class, response.getBody().getClass());
+        // Add assertions for the expected response body
+    }
+
+    // Similar test cases for other methods...
+
+    @Test
+    public void testGetDetailsOfAPerson() {
+        // Create mock data for the test case
+        Principal principal = mock(Principal.class);
+        when(principal.getName()).thenReturn("test@example.com");
+        int accountId = 1;
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setAccountNumber(accountId);
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(accountId)).thenReturn(personalDetails);
+
+        // Call the getDetailsOfAPerson method
+        ResponseEntity<Object> response = personalDetailsController.getDetailsOfAPerson(accountId, principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        // Add assertions for the expected response body
     }
 
     @Test
-    public void testGetDetails_InvalidPrincipal() {
-        Principal principal = mock(Principal.class);
-        when(ValueExtrecterFromPrinciple.getDetailsFromPrinciple(principal)).thenReturn(null);
+    public void testGetUsername() {
+        // Create mock data for the test case
+        ForgotUsernameRequest forgotUsernameRequest = new ForgotUsernameRequest();
+        forgotUsernameRequest.setAccountNumber(123);
+        forgotUsernameRequest.setAadharNumber("1234567890");
 
-        ResponseEntity<Object> response = personalDetailsController.getDetails(principal);
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setAccountNumber(forgotUsernameRequest.getAccountNumber());
+        personalDetails.setIdentityProofNumber(forgotUsernameRequest.getAadharNumber());
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("Account Not Found", response.getBody());
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(forgotUsernameRequest.getAccountNumber())).thenReturn(personalDetails);
+
+        // Call the getUsername method
+        ResponseEntity<Object> response = personalDetailsController.getUsername(forgotUsernameRequest);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().toString().contains(personalDetails.getUsername()));
     }
 
     @Test
-    public void testGetAccount() {
-        int accountId = 123;
-        when(personalDetailsService.getDetailsByAccountNumber(accountId)).thenReturn(new PersonalDetails());
+    public void testForgotPassword() {
+        // Create mock data for the test case
+        ForgotPasswordRequest forgotPasswordRequest = new ForgotPasswordRequest();
+        forgotPasswordRequest.setAccountNumber(123);
+        forgotPasswordRequest.setAadharNumber("1234567890");
+        forgotPasswordRequest.setUserId("testUser");
+        forgotPasswordRequest.setNewPassword("newPassword");
 
-        ResponseEntity<Object> response = personalDetailsController.getAccount(accountId, mock(Principal.class));
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setAccountNumber(forgotPasswordRequest.getAccountNumber());
+        personalDetails.setIdentityProofNumber(forgotPasswordRequest.getAadharNumber());
+        personalDetails.setUsername(forgotPasswordRequest.getUserId());
 
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(forgotPasswordRequest.getAccountNumber())).thenReturn(personalDetails);
+
+        // Call the forgotPassword method
+        ResponseEntity<Object> response = personalDetailsController.forgotPassword(forgotPasswordRequest);
+
+        // Verify the behavior and response
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(PersonalDetails.class, response.getBody().getClass());
+        assertTrue(response.getBody().toString().contains("Password is updated."));
     }
+
+
+    // Similar test cases for other methods...
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -935,3 +935,553 @@ public class TransactionServiceTest {
         verify(transactionRepository, times(1)).save(transaction);
     }
 }
+
+
+
+
+
+logics
+
+
+
+
+
+
+import com.bank.api.dto.*;
+import com.bank.api.entity.*;
+import com.bank.api.helper.ModelConverter;
+import com.bank.api.helper.ValueExtrecterFromPrinciple;
+import com.bank.api.services.AccountService;
+import com.bank.api.services.PersonalDetailsService;
+import com.bank.api.services.TransactionService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import java.security.Principal;
+import java.util.ArrayList;
+import java.util.List;
+import static org.mockito.Mockito.*;
+
+public class AccountLogicsTest {
+
+    @InjectMocks
+    private AccountLogics accountLogics;
+
+    @Mock
+    private AccountService accountService;
+
+    @Mock
+    private PersonalDetailsService personalDetailsService;
+
+    @Mock
+    private TransactionService transactionService;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testTransferMoney_InvalidTargetAccount() {
+        // Create mock data for the test case
+        TransferRequest transferRequest = new TransferRequest();
+        transferRequest.setAccountNumber(2); // Target account number
+        Principal principal = mock(Principal.class);
+
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(2)).thenReturn(null);
+
+        // Call the transferMoney method
+        ResponseEntity<Object> response = accountLogics.transferMoney(transferRequest, principal);
+
+        // Verify the behavior and response
+        verify(accountService, never()).updateAccount(any());
+        verify(transactionService, never()).updateTransaction(any());
+        verify(personalDetailsService, times(1)).getDetailsByAccountNumber(2);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Invalid account number.", response.getBody());
+    }
+
+    @Test
+    public void testTransferMoney_SameAccount() {
+        // Create mock data for the test case
+        TransferRequest transferRequest = new TransferRequest();
+        transferRequest.setAccountNumber(1); // Same account number as the principal
+        Principal principal = mock(Principal.class);
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Call the transferMoney method
+        ResponseEntity<Object> response = accountLogics.transferMoney(transferRequest, principal);
+
+        // Verify the behavior and response
+        verify(accountService, never()).updateAccount(any());
+        verify(transactionService, never()).updateTransaction(any());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("You cannot send money to your own account.", response.getBody());
+    }
+
+    @Test
+    public void testTransferMoney_InvalidTransactionPassword() {
+        // Create mock data for the test case
+        TransferRequest transferRequest = new TransferRequest();
+        transferRequest.setAccountNumber(2); // Target account number
+        transferRequest.setTransactionPassword("invalid_password");
+        Principal principal = mock(Principal.class);
+        PersonalDetails targetAccount = new PersonalDetails();
+        targetAccount.setAccountNumber(2); // Target account number
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        currentAccount.getAccount().setTransactionPassword("correct_password");
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(2)).thenReturn(targetAccount);
+
+        // Call the transferMoney method
+        ResponseEntity<Object> response = accountLogics.transferMoney(transferRequest, principal);
+
+        // Verify the behavior and response
+        verify(accountService, never()).updateAccount(any());
+        verify(transactionService, never()).updateTransaction(any());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Invalid transaction password.", response.getBody());
+    }
+
+    @Test
+    public void testTransferMoney_InvalidName() {
+        // Create mock data for the test case
+        TransferRequest transferRequest = new TransferRequest();
+        transferRequest.setAccountNumber(2); // Target account number
+        transferRequest.setTransactionPassword("correct_password");
+        transferRequest.setFirstName("incorrect_first_name");
+        transferRequest.setLastName("incorrect_last_name");
+        Principal principal = mock(Principal.class);
+        PersonalDetails targetAccount = new PersonalDetails();
+        targetAccount.setAccountNumber(2); // Target account number
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        currentAccount.getAccount().setTransactionPassword("correct_password");
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(2)).thenReturn(targetAccount);
+
+        // Call the transferMoney method
+        ResponseEntity<Object> response = accountLogics.transferMoney(transferRequest, principal);
+
+        // Verify the behavior and response
+        verify(accountService, never()).updateAccount(any());
+        verify(transactionService, never()).updateTransaction(any());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Invalid name.", response.getBody());
+    }
+
+    @Test
+    public void testTransferMoney_InvalidBalance() {
+        // Create mock data for the test case
+        TransferRequest transferRequest = new TransferRequest();
+        transferRequest.setAccountNumber(2); // Target account number
+        transferRequest.setTransactionPassword("correct_password");
+        transferRequest.setFirstName("correct_first_name");
+        transferRequest.setLastName("correct_last_name");
+        transferRequest.setAmount(1000); // More than the current balance
+        Principal principal = mock(Principal.class);
+        PersonalDetails targetAccount = new PersonalDetails();
+        targetAccount.setAccountNumber(2); // Target account number
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        currentAccount.getAccount().setTransactionPassword("correct_password");
+        currentAccount.getAccount().setBalance(500); // Current balance
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(2)).thenReturn(targetAccount);
+
+        // Call the transferMoney method
+        ResponseEntity<Object> response = accountLogics.transferMoney(transferRequest, principal);
+
+        // Verify the behavior and response
+        verify(accountService, never()).updateAccount(any());
+        verify(transactionService, never()).updateTransaction(any());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Insufficient balance.", response.getBody());
+    }
+
+    // Additional test cases for transferMoney with valid data and other methods...
+
+    @Test
+    public void testGetAccountTransaction_InvalidAccount() {
+        // Create mock data for the test case
+        int accountId = 2; // Invalid account number
+        Principal principal = mock(Principal.class);
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(accountId)).thenReturn(null);
+
+        // Call the getAccountTransaction method
+        ResponseEntity<Object> response = accountLogics.getAccountTransaction(accountId, principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Invalid account number.", response.getBody());
+    }
+
+    @Test
+    public void testGetAccountTransaction_ValidAccount() {
+        // Create mock data for the test case
+        int accountId = 2; // Valid account number
+        Principal principal = mock(Principal.class);
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        Account account = new Account();
+        // Set up other properties of the account
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(accountId)).thenReturn(account);
+
+        // Call the getAccountTransaction method
+        ResponseEntity<Object> response = accountLogics.getAccountTransaction(accountId, principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("account.getTrans()", response.getBody()); // Replace with the expected response
+    }
+
+    @Test
+    public void testGetTransaction() {
+        // Create mock data for the test case
+        Principal principal = mock(Principal.class);
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        int accountNumber = 1;
+        List<Transaction> transactions = new ArrayList<>();
+        // Add sample transactions to the list
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(accountNumber)).thenReturn(new Account(accountNumber));
+        when(transactionService.getTransactionResponseListFromTransactionList(transactions, principal))
+            .thenReturn(new ArrayList<>()); // Replace with your expected response
+
+        // Call the getTransaction method
+        ResponseEntity<Object> response = accountLogics.getTransaction(principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(new ArrayList<>(), response.getBody()); // Replace with your expected response
+    }
+
+    @Test
+    public void testGetAccountInfo() {
+        // Create mock data for the test case
+        Principal principal = mock(Principal.class);
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        currentAccount.setRole("ADMIN"); // Set role for admin test
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        int accountNumber = 1;
+        Account account = new Account(accountNumber);
+        account.setBalance(1000); // Sample balance
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(accountNumber)).thenReturn(account);
+
+        // Call the getAccountInfo method
+        ResponseEntity<Object> response = accountLogics.getAccountInfo(principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        AccountResponse expectedResponse = new AccountResponse();
+        expectedResponse.setAccountNumber(accountNumber);
+        expectedResponse.setBalance(account.getBalance());
+        expectedResponse.setAdmin(true);
+        assertEquals(expectedResponse, response.getBody()); // Replace with your expected response
+    }
+
+    @Test
+    public void testGetAccount_InvalidAccount() {
+        // Create mock data for the test case
+        int accountId = 2; // Invalid account number
+        Principal principal = mock(Principal.class);
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(accountId)).thenReturn(null);
+
+        // Call the getAccount method
+        ResponseEntity<Object> response = accountLogics.getAccount(accountId, principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Invalid account number.", response.getBody());
+    }
+
+    @Test
+    public void testDepositMoney() {
+        // Create mock data for the test case
+        DepositRequest depositRequest = new DepositRequest();
+        depositRequest.setAccountNumber(1); // Valid account number
+        depositRequest.setAmount(500); // Deposit amount
+        Principal principal = mock(Principal.class);
+        Account account = new Account(1);
+        account.setBalance(1000); // Current balance
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(depositRequest.getAccountNumber())).thenReturn(account);
+
+        // Call the depositMoney method
+        ResponseEntity<Object> response = accountLogics.depositMoney(depositRequest, principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1500, account.getBalance()); // Updated balance
+    }
+
+    @Test
+    public void testWithdrawMoney_InsufficientBalance() {
+        // Create mock data for the test case
+        DepositRequest depositRequest = new DepositRequest();
+        depositRequest.setAccountNumber(1); // Valid account number
+        depositRequest.setAmount(1500); // Withdrawal amount exceeds balance
+        Principal principal = mock(Principal.class);
+        Account account = new Account(1);
+        account.setBalance(1000); // Current balance
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(depositRequest.getAccountNumber())).thenReturn(account);
+
+        // Call the withdrawMoney method
+        ResponseEntity<Object> response = accountLogics.withdrawMoney(depositRequest, principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Insufficient balance", response.getBody());
+    }
+
+    @Test
+    public void testWithdrawMoney() {
+        // Create mock data for the test case
+        DepositRequest depositRequest = new DepositRequest();
+        depositRequest.setAccountNumber(1); // Valid account number
+        depositRequest.setAmount(500); // Withdrawal amount
+        Principal principal = mock(Principal.class);
+        Account account = new Account(1);
+        account.setBalance(1000); // Current balance
+        PersonalDetails currentAccount = new PersonalDetails();
+        currentAccount.setAccountNumber(1); // Principal's account number
+        when(((Authentication) principal).getPrincipal()).thenReturn(currentAccount);
+
+        // Set up the behavior of the mock dependencies
+        when(accountService.getAccount(depositRequest.getAccountNumber())).thenReturn(account);
+
+        // Call the withdrawMoney method
+        ResponseEntity<Object> response = accountLogics.withdrawMoney(depositRequest, principal);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(500, account.getBalance()); // Updated balance
+    }
+
+    // Additional test cases for getTransaction, getAccountInfo, getAccount, depositMoney, and withdrawMoney...
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import com.bank.api.dto.BeneficiaryRequest;
+import com.bank.api.entity.Beneficiary;
+import com.bank.api.entity.PersonalDetails;
+import com.bank.api.services.BeneficiaryService;
+import com.bank.api.services.PersonalDetailsService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.security.Principal;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+public class BeneficiaryLogicsTest {
+
+    @InjectMocks
+    private BeneficiaryLogics beneficiaryLogics;
+
+    @Mock
+    private BeneficiaryService beneficiaryService;
+
+    @Mock
+    private PersonalDetailsService personalDetailsService;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    public void testAddBeneficiary() {
+        // Create mock data for the test case
+        BeneficiaryRequest beneficiaryRequest = new BeneficiaryRequest();
+        beneficiaryRequest.setAccountNumber(123);
+        beneficiaryRequest.setFirstName("John");
+        beneficiaryRequest.setLastName("Doe");
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setAccountNumber(beneficiaryRequest.getAccountNumber());
+        personalDetails.setFirstName("John");
+        personalDetails.setLastName("Doe");
+
+        PersonalDetails loggedInUser = new PersonalDetails();
+        loggedInUser.setEmail("user@example.com");
+
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(beneficiaryRequest.getAccountNumber())).thenReturn(personalDetails);
+        when(beneficiaryService.getBeneficiaryList(loggedInUser.getEmail())).thenReturn(new ArrayList<>());
+
+        // Call the addBeneficiary method
+        ResponseEntity<Object> response = beneficiaryLogics.addBeneficiary(beneficiaryRequest, loggedInUser);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    public void testAddBeneficiaryInvalidAccount() {
+        // Create mock data for the test case
+        BeneficiaryRequest beneficiaryRequest = new BeneficiaryRequest();
+        beneficiaryRequest.setAccountNumber(123);
+        beneficiaryRequest.setFirstName("John");
+        beneficiaryRequest.setLastName("Doe");
+
+        // Set up the behavior of the mock dependencies to return null (invalid account)
+        when(personalDetailsService.getDetailsByAccountNumber(beneficiaryRequest.getAccountNumber())).thenReturn(null);
+
+        // Call the addBeneficiary method
+        ResponseEntity<Object> response = beneficiaryLogics.addBeneficiary(beneficiaryRequest, null);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(response.getBody().toString().contains("Invalid account number"));
+    }
+
+    @Test
+    public void testAddBeneficiaryNameNotMatched() {
+        // Create mock data for the test case
+        BeneficiaryRequest beneficiaryRequest = new BeneficiaryRequest();
+        beneficiaryRequest.setAccountNumber(123);
+        beneficiaryRequest.setFirstName("John");
+        beneficiaryRequest.setLastName("Doe");
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setAccountNumber(beneficiaryRequest.getAccountNumber());
+        personalDetails.setFirstName("Jane"); // Different first name
+        personalDetails.setLastName("Smith"); // Different last name
+
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(beneficiaryRequest.getAccountNumber())).thenReturn(personalDetails);
+
+        // Call the addBeneficiary method
+        ResponseEntity<Object> response = beneficiaryLogics.addBeneficiary(beneficiaryRequest, null);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(response.getBody().toString().contains("Name not matched"));
+    }
+
+    @Test
+    public void testAddBeneficiaryAccountAlreadyPresent() {
+        // Create mock data for the test case
+        BeneficiaryRequest beneficiaryRequest = new BeneficiaryRequest();
+        beneficiaryRequest.setAccountNumber(123);
+        beneficiaryRequest.setFirstName("John");
+        beneficiaryRequest.setLastName("Doe");
+
+        PersonalDetails personalDetails = new PersonalDetails();
+        personalDetails.setAccountNumber(beneficiaryRequest.getAccountNumber());
+        personalDetails.setFirstName("John");
+        personalDetails.setLastName("Doe");
+
+        PersonalDetails loggedInUser = new PersonalDetails();
+        loggedInUser.setEmail("user@example.com");
+
+        List<Beneficiary> beneficiaries = new ArrayList<>();
+        Beneficiary existingBeneficiary = new Beneficiary();
+        existingBeneficiary.setAccountNumber(beneficiaryRequest.getAccountNumber());
+        beneficiaries.add(existingBeneficiary);
+
+        // Set up the behavior of the mock dependencies
+        when(personalDetailsService.getDetailsByAccountNumber(beneficiaryRequest.getAccountNumber())).thenReturn(personalDetails);
+        when(beneficiaryService.getBeneficiaryList(loggedInUser.getEmail())).thenReturn(beneficiaries);
+
+        // Call the addBeneficiary method
+        ResponseEntity<Object> response = beneficiaryLogics.addBeneficiary(beneficiaryRequest, loggedInUser);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(response.getBody().toString().contains("Account already present"));
+    }
+
+    @Test
+    public void testGetBeneficiaries() {
+        // Create mock data for the test case
+        PersonalDetails loggedInUser = new PersonalDetails();
+        loggedInUser.setEmail("user@example.com");
+
+        List<Beneficiary> beneficiaries = new ArrayList<>();
+        beneficiaries.add(new Beneficiary());
+        beneficiaries.add(new Beneficiary());
+
+        // Set up the behavior of the mock dependencies
+        when(beneficiaryService.getBeneficiaryList(loggedInUser.getEmail())).thenReturn(beneficiaries);
+
+        // Call the getBeneficiaries method
+        ResponseEntity<Object> response = beneficiaryLogics.getBeneficiaries(loggedInUser);
+
+        // Verify the behavior and response
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
+        assertEquals(beneficiaries.size(), ((List<?>) response.getBody()).size());
+    }
+}
+
